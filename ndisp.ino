@@ -91,8 +91,9 @@ void prntlev(){
             qtyadm++; qtyusr++;
             dailyadm+=dose; dailyusr+=dose; all+=dose;
             prntl0(); eewrite(); vviso=false;
+            tvo=millis();
           }
-          if(digitalRead(trin)==LOW&&vviso==false){
+          if(digitalRead(trin)==LOW&&vviso==false&&(millis()-tvo)>vton){
             TCNT1=0x0; fk=0.0,vn=0.0; cnt=0;
             digitalWrite(trout,HIGH);
             vviso=true;

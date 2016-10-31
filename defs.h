@@ -31,7 +31,7 @@ decode_results results;            // create instance of 'decode_results'
 #define fwminp 8// flowmeter input pin;
 #define dvsr 1024// 101 - CLK/1024;
 #define tclk 16000000// 16MHz;
-#define minml 350// at least 350 milliliters;
+#define minml 100// at least 350 milliliters;
 #define maxml 20000// maximum of 20 liters;
 #define rnd 20// round;
 //#define t2ml 0.516
@@ -54,8 +54,9 @@ byte strpinc [4];
 byte tmparr[5];//for entering numbers from ir
 byte numgt;
 unsigned short int vton=3000;//valve time on;
-unsigned int tgmm=600;// valve t_off;
+unsigned int tgmm=400;// valve t_off;
 unsigned int tpl=516;
+unsigned int tvo=0;
 unsigned long mvton;
 unsigned long nt1;
 //unsigned int vtoff=120;//valve time off (ms);

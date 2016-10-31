@@ -13,7 +13,7 @@ void prntl0(){
   display.setTextSize(1/2);
   display.setCursor(prenw,25);//  display.setTextSize(1/2);
   display.print(" dose:  ");
-  display.print(dose/(ml2lout+0.0));
+  display.print(dose);
   display.display();
 
   display.setTextSize(1);
@@ -45,7 +45,7 @@ void prntl3(){
   display.fillRect(1, 1, slctw-1, LCDHEIGHT-3, WHITE); // x, y, w, h, color
   display.setCursor(prenw,3); display.print("All: "); display.print(all/(ml2lout+0.0));
   display.setCursor(prenw,14); display.print("QTY: "); display.print(qtyadm);
-  display.setCursor(prenw,25); display.print("dose: "); display.print(dose/(ml2lout+0.0));
+  display.setCursor(prenw,25); display.print("dose: "); display.print(dose);
   display.setCursor(prenw,37); display.print("daily: "); display.print(dailyadm/(ml2lout+0.0));
   display.display();
 }
