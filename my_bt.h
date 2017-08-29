@@ -5,12 +5,9 @@
 #include "chino/framework/resources/svcipcresourcebase.h"
 #include "resource/phone/Interface/my_resource.h"
 
-#include "v2/com/harman/btpres/ConnectionManagerProxy.hpp"
-#include "v1/com/harman/btpresplugin/BtManagerExtProxy.hpp"
-#include "v1/com/harman/btpresplugin/BTPresPluginTypes.hpp"
-#include "v1/com/harman/btpres/CallManagerProxy.hpp"
-#include "v2/com/harman/btpres/PimDbHandlerProxy.hpp"
-#include "v4/com/harman/btpres/BTPresTypes.hpp"
+#include <thread>
+#include <chrono>
+#include <vector>
 
 #include "hmicomm.h"
 
@@ -22,7 +19,8 @@ public:
     virtual ~my_bt();
     void in_callback1(QVariant indx);
     void on_resource(int indx);
-
+    void if_win(int indx);
+    void f_thread(int indx);
 
 signals:
     void ResourceUpdate(QString propertyName, QVariant value);
@@ -34,7 +32,10 @@ public slots:
 private:
     Chino::ResourceImpl &_propertyHandler;
     Chino::Framework& framework;
-    QList<Chino::resourcePropertyListener> _listeners;
+    //QList<Chino::resourcePropertyListener> _listeners;
+    bool is_rtrn;
+    int cell_ind[3*3];
+    std::vector<std::thread> threads;
 
 };
 

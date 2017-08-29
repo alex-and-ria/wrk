@@ -69,7 +69,7 @@ void my_med::screenIn(QVariantMap&)
 
 
     Chino::resourceReadyCallback cbkEnt(std::bind(&my_med::onMyResourceReady, this, _1, _2));
-    resourceReadyPtr << framework.getResourceReady(EntertainmentAudioResource::RESOURCE_NAME(), cbkEnt);
+    resourceReadyPtr << framework.getResourceReady(my_resource::RESOURCE_NAME(), cbkEnt);
 }
 
 void my_med::screenOut(QVariantMap &)

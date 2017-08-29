@@ -6,8 +6,8 @@ using namespace std::placeholders;
 
 my_resourceImpl::my_resourceImpl(Chino::Framework &fw) :
     Chino::ResourceImpl(fw),
-    _ptr_my_bt(nullptr),
-    is_rtrn(true)
+    _ptr_my_bt(nullptr)//,
+    //is_rtrn(true)
 {
     qDebug() << Q_FUNC_INFO;
     //_ptrBtResource = new BtResource(fw, *this);
@@ -16,11 +16,15 @@ my_resourceImpl::my_resourceImpl(Chino::Framework &fw) :
     properties << PROPERTY_CELL_COLOR();
     registerCustom(properties);
     _ptr_my_bt = new my_bt(fw, *this);
+
+/*/////////////////////////////////////////////////prev_impl
     for(unsigned char i=0;i<3*3;i++){
         cell_ind[i]=-1;
     }
+*/// //////////////////////////////////////////////prev_inpl_
 }
 
+/*////////////////////////////////////////////////prev_impl
 void my_resourceImpl::if_win(int p_indx){
     bool is_win=false;
     int indxx=p_indx/3;
@@ -74,6 +78,8 @@ void my_resourceImpl::if_win(int p_indx){
         }
     }
 }
+
+*/// ////////////////////////////////////prev_impl_
 
 void my_resourceImpl::on_med(int indx){
     qDebug()<<Q_FUNC_INFO<<"index="<<indx;

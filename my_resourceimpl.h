@@ -26,12 +26,12 @@ public:
 
 
     void setReady();
-    void if_win(int indx);
+    //void if_win(int indx);
 
 private:
     my_bt* _ptr_my_bt;
-    bool is_rtrn;
-    int cell_ind[3*3];
+    //bool is_rtrn;
+    //int cell_ind[3*3];
 
 };
 
