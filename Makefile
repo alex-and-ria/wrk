@@ -1,5 +1,5 @@
 CC=gcc 
-CFLAGS=-Wall
+
 snfr: snfr.o
 
 clean:

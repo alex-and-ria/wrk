@@ -21,33 +21,81 @@
 #include<unistd.h>
 
 #define buf_sz 65536
+#define line_len 21//n(255.255.255.255)=15; n(' ')=1; n(unsigned int)=4; n('\n')=1;
+#define m_ip_len 15
 
 void sps(){
 	printf("\npak...");
 	getchar();
 }
 
-union uint_f{
+typedef union uint_u{
 	unsigned int u_val;
 	unsigned char u_byte[4];
-};
+} uint_f;
 
-int ffindip(struct sockaddr_in src,FILE *logfile){
+unsigned int getln(unsigned char* g_ip, uint_f* g_ipcnt,FILE *logfile){
+	unsigned char strff[line_len]; unsigned int cpcnt=0,i=0;
+	fread(strff,sizeof(unsigned char),line_len,logfile);
+	for(i=0;i<m_ip_len;i++){
+		if(strff[i]!=' '){
+			memcpy(g_ip+cpcnt,strff+i,1);
+			cpcnt++;
+		}
+	}
+	memcpy(g_ip+cpcnt,"\0",1);
+	g_ipcnt->u_byte[0]=strff[16]; g_ipcnt->u_byte[1]=strff[17]; g_ipcnt->u_byte[2]=strff[18]; g_ipcnt->u_byte[3]=strff[19];
+	printf("\ncpcnt=%d strlen(g_ip)=%d g_ip=%s",cpcnt,strlen(g_ip),g_ip);
+	return cpcnt;
+}
+
+int ffindip(struct sockaddr_in src,FILE *logfile){//it would be easier to work with data loaded to RAM (with list or so) but as
+//collected information may become too big to handle it, there used file to save data;
 	sps();
+	unsigned char str_to_file[line_len],g_ip[m_ip_len+1];
+	uint_f curr_ipcnt,g_ipcnt; curr_ipcnt.u_val=1;
+	unsigned int i,cmpres; unsigned long int n_lines=0,sln=0,eln=0;
+	for(i=0;i<21;i++)
+		str_to_file[i]=' ';
+	memcpy(str_to_file+15-strlen(inet_ntoa(src.sin_addr)),inet_ntoa(src.sin_addr),strlen(inet_ntoa(src.sin_addr)));
+	memcpy(str_to_file+16,curr_ipcnt.u_byte,sizeof(curr_ipcnt.u_val));
+	memcpy(str_to_file+20,"\n",strlen("\n"));
+	
 	rewind(logfile);//find start of the file;
 	unsigned long int sstrt=ftell(logfile);
 	if(fseek(logfile,0L,SEEK_END)){
 		printf("\nfseek_err: %s",strerror(errno)); return -1;
 	}
-	unsigned long int send=ftell(logfile); 
+	unsigned long int send=ftell(logfile);
 	rewind(logfile); unsigned char ufchar;
-	if((ufchar=getc(logfile))!=EOF&&ufchar!='|'){//file is empty;
-		printf("\nufchar=%c", ufchar);
-		rewind(logfile);
-		fprintf(logfile,"|%s %ld\n",inet_ntoa(src.sin_addr), (unsigned long int)1);
+	printf("send-sstrt=%ld",send-sstrt); sps();
+	if((send-sstrt)==0){//file is empty;
+		rewind(logfile);//to be sure;
+		fwrite(str_to_file,sizeof(unsigned char),line_len,logfile);
 		return 0;
 	}
-	sps();
+	n_lines=(send-sstrt)/21; sln=0;eln=n_lines;
+	printf("n_lines=%ld",n_lines); sps();
+	
+	rewind(logfile);
+	while((eln-sln)>0){
+		unsigned int f_ip_len=getln(g_ip,&g_ipcnt,logfile);
+		printf("\ng_ip=%s g_ipcnt.u_val=%d",g_ip,g_ipcnt.u_val);
+		sps();
+		if((cmpres=strcmp(g_ip,inet_ntoa(src.sin_addr)))==0){//equal
+			//cnt++; put recort to file;
+		}
+		else if(cmpres<0){
+			sln=(eln-sln-0.5)/2;
+		}
+		else{
+			eln=(eln-sln+0.5)/2;
+		}
+		
+		//
+	}
+	/*
+	
 	if(ufchar=='|'){
 		rewind(logfile);//find file's beginning;
 		while((send-sstrt)/2>0){
@@ -97,7 +145,7 @@ int ffindip(struct sockaddr_in src,FILE *logfile){
 	}
 	else{
 		return -1;
-	}
+	}*/
 }
 
 void pprocess(unsigned char* buffer, int data_sz, struct ifreq ifr,FILE *logfile){
@@ -163,3 +211,8 @@ int main(){
     printf("Finished");
     return 0;
 }
+
+//currently 'printf' statements are used for debugging; later they will be deleted for daemon code;
+//later (when splitting this code to daemon and cli parts) some 'printf' statements (different from current) will be present in cli;
+//files "log%interface_name%.txt will be saved at '/' (perhaps place them in separate directory: '/%dir_name%/%files%');
+//communication between cli and daemon will be implemented through file (AF_UNIX socket); may d-bus be used, but it will take more time;
