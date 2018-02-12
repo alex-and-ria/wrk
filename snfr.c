@@ -27,7 +27,12 @@ void sps(){
 	getchar();
 }
 
-int ffindip(struct sockaddr_in src,FILE *logfile, unsigned char* if_name){
+union uint_f{
+	unsigned int u_val;
+	unsigned char u_byte[4];
+};
+
+int ffindip(struct sockaddr_in src,FILE *logfile){
 	sps();
 	rewind(logfile);//find start of the file;
 	unsigned long int sstrt=ftell(logfile);
@@ -39,14 +44,14 @@ int ffindip(struct sockaddr_in src,FILE *logfile, unsigned char* if_name){
 	if((ufchar=getc(logfile))!=EOF&&ufchar!='|'){//file is empty;
 		printf("\nufchar=%c", ufchar);
 		rewind(logfile);
-		fprintf(logfile,"|%s %ld %s\n",inet_ntoa(src.sin_addr), (unsigned long int)1,if_name);
+		fprintf(logfile,"|%s %ld\n",inet_ntoa(src.sin_addr), (unsigned long int)1);
 		return 0;
 	}
 	sps();
 	if(ufchar=='|'){
 		rewind(logfile);//find file's beginning;
 		while((send-sstrt)/2>0){
-			printf("\nsend=%ld sstrt=%ld",send,sstrt);
+			printf("\n\nsend=%ld sstrt=%ld",send,sstrt);
 			if(fseek(logfile,(send-sstrt)/2,SEEK_SET)){//find middle of the file;
 				printf("\nfseek_err: %s",strerror(errno)); return -1;
 			}
@@ -56,35 +61,46 @@ int ffindip(struct sockaddr_in src,FILE *logfile, unsigned char* if_name){
 					printf("\nfcur_pos=%ld ufchar=%c",fcur_pos,ufchar);
 					fcur_pos-=1;
 					fseek(logfile,fcur_pos,SEEK_SET);
-					ufchar=getc(logfile);					
+					ufchar=getc(logfile);
+					if(fcur_pos<0){
+						printf("\n\n!!! fcur_pos<0");
+						return -1;
+					}					
 				}
 				fcur_pos=ftell(logfile);printf("\nfcur_pos=%ld",fcur_pos);
-				unsigned char ipstr[2*sizeof(inet_ntoa(src.sin_addr))], ipif[10]; unsigned long int ipcnt;
-				fscanf(logfile,"%s %ld %s",ipstr,&ipcnt,ipif);
-				printf("\nipstr=%s to %s ipcnt=%ld ipif=%s to %s\n",ipstr,inet_ntoa(src.sin_addr),ipcnt,ipif,if_name);
-				if(strcmp(ipstr,inet_ntoa(src.sin_addr))==0 && strcmp(ipif,if_name)==0){//equal 
+				unsigned char ipstr[2*sizeof(inet_ntoa(src.sin_addr))]; unsigned long int ipcnt; int cmpres;
+				fscanf(logfile,"%s %ld\n",ipstr,&ipcnt);
+				printf("\nipstr=%s to %s ipcnt=%ld\n",ipstr,inet_ntoa(src.sin_addr),ipcnt);
+				if((cmpres=strcmp(ipstr,inet_ntoa(src.sin_addr)))==0 ){//equal 
 					ipcnt+=1;
 					printf("\nfcur_pos=%ld",fcur_pos);
 					fseek(logfile,fcur_pos-1,SEEK_SET);
-					//rewind(logfile);
-					fprintf(logfile,"|%s %ld %s\n",inet_ntoa(src.sin_addr),ipcnt,if_name);
+					fprintf(logfile,"|%s %ld\n",inet_ntoa(src.sin_addr),ipcnt);
 					printf("\nipcnt=%ld\n",ipcnt);
 					return 0;
 				}
-				sps();
-				
+				else if(cmpres<0){
+					sstrt=(send-sstrt)/2;
+					printf("\n\ncmpres<0 send=%ld sstrt=%ld",send,sstrt);
+				}
+				else{
+					send=(send-sstrt)/2;
+					printf("\n\ncmpres>0 send=%ld sstrt=%ld",send,sstrt);
+				}				
 			}
-			return 0;
+			sps();
 		}
-		
-		//put string;
+		printf("\nfcur_pos (ftell)=%ld",ftell(logfile));
+		fprintf(logfile,"|%s %ld\n",inet_ntoa(src.sin_addr), (unsigned long int)1);
+		sps();
+		return 0;
 	}
 	else{
 		return -1;
 	}
 }
 
-void pprocess(unsigned char* buffer, int data_sz, struct ifreq ifr,FILE *logfile, unsigned char* if_name){
+void pprocess(unsigned char* buffer, int data_sz, struct ifreq ifr,FILE *logfile){
 	struct sockaddr_in source,dest;
 	struct iphdr *iph = (struct iphdr *)(buffer  + sizeof(struct ethhdr));
 	source.sin_addr.s_addr = iph->saddr; dest.sin_addr.s_addr = iph->daddr;
@@ -94,7 +110,7 @@ void pprocess(unsigned char* buffer, int data_sz, struct ifreq ifr,FILE *logfile
 	}
 	else{
 		printf("\nsource.sin_addr=%s, ifr.sin_addr=%s\n",inet_ntoa(source.sin_addr),inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
-		if(ffindip(source,logfile,if_name)){
+		if(ffindip(source,logfile)){
 			
 		}
 	}
@@ -102,12 +118,15 @@ void pprocess(unsigned char* buffer, int data_sz, struct ifreq ifr,FILE *logfile
  
 int main(){
 	FILE *logfile; int saddr_size , data_size; struct sockaddr saddr; int dcnt=50;
-	char* if_name="eth0";
+	char* if_name="eth0"; char fname[sizeof("log")+10+sizeof(".txt")]; 
+	memcpy(fname,"log",strlen("log"));
+	memcpy(fname+strlen("log"),if_name,strlen(if_name));
+	memcpy(fname+strlen("log")+strlen(if_name),".txt\0",strlen(".txt\0")+1); printf("%s",fname);
     unsigned char *buffer = (unsigned char *) malloc(buf_sz);
      
-    logfile=fopen("log.txt","rb+");
+    logfile=fopen(fname,"rb+");
     if(logfile==NULL){
-    	logfile=fopen("log.txt","wb+");//if file not exist, create it;
+    	logfile=fopen(fname,"wb+");//if file not exist, create it;
     	if(logfile==NULL)
     		printf("Unable to create log.txt file.");
     }
@@ -136,7 +155,7 @@ int main(){
             return 1;
         }
         //Now process the packet
-        pprocess(buffer,data_size,ifr,logfile,if_name);
+        pprocess(buffer,data_size,ifr,logfile);
         dcnt--;
         
     }
