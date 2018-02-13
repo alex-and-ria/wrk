@@ -54,7 +54,7 @@ int ffindip(struct sockaddr_in src,FILE *logfile){//it would be easier to work w
 	sps();
 	unsigned char str_to_file[line_len],strff[line_len],g_ip[m_ip_len+1];
 	uint_f curr_ipcnt,g_ipcnt; curr_ipcnt.u_val=1;
-	unsigned int i,cmpres; unsigned long int n_lines=0,sln=0,eln=0,curr_dif,curr_line; long int i_signed;
+	unsigned int i; int cmpres; unsigned long int n_lines=0,sln=0,eln=0,curr_dif,curr_line; long int i_signed;
 	for(i=0;i<line_len;i++)
 		str_to_file[i]=' ';
 	memcpy(str_to_file+15-strlen(inet_ntoa(src.sin_addr)),inet_ntoa(src.sin_addr),strlen(inet_ntoa(src.sin_addr)));
@@ -104,7 +104,7 @@ int ffindip(struct sockaddr_in src,FILE *logfile){//it would be easier to work w
 	}//we have src.sin_addr, sln, eln;
 	fseek(logfile, sln*line_len,SEEK_SET);//find start line position;
 	getln(strff,g_ip,&g_ipcnt,logfile);
-	cmpres=strcmp(g_ip,inet_ntoa(src.sin_addr)); printf("\ncmpres (sln,ni)=%d", cmpres);
+	cmpres=strcmp(g_ip,inet_ntoa(src.sin_addr)); printf("\ncmpres (sln,ni)=%d", cmpres);	
 	if((cmpres=strcmp(g_ip,inet_ntoa(src.sin_addr)))==0){
 		printf("\n(sln=%ld) cmpres=%d g_ip=%s inet_ntoa(src.sin_addr))=%s",sln,cmpres,g_ip,inet_ntoa(src.sin_addr));
 		g_ipcnt.u_val++;
@@ -113,7 +113,7 @@ int ffindip(struct sockaddr_in src,FILE *logfile){//it would be easier to work w
 		fwrite(strff,sizeof(unsigned char),line_len,logfile);
 		return 0;
 	}
-	else if(cmpres>0){//insert line before sln;
+	if(cmpres>0){//insert line before sln;
 		for(i_signed=n_lines-1;i_signed>=(long int)sln;i_signed--){//shift lines;
 			printf("\nib i_signed=%ld, n_lines=%ld, sln=%ld",i_signed,n_lines,sln);
 			sps();
@@ -137,8 +137,8 @@ int ffindip(struct sockaddr_in src,FILE *logfile){//it would be easier to work w
 			fwrite(strff,sizeof(unsigned char),line_len,logfile);
 			return 0;
 		}
-		else if(cmpres>0){//insert line between sln and eln;
-			printf("\ncmpres (eln,ni)=%d", cmpres);
+		if(cmpres>0){//insert line between sln and eln;
+			printf("\ncmpres1 (eln,ni)=%d", cmpres);
 			for(i_signed=n_lines-1;i_signed>=(long int)eln;i_signed--){
 				printf("\nibw i_signed=%ld, n_lines=%ld, eln=%ld",i_signed,n_lines,eln);
 				sps();
@@ -237,3 +237,4 @@ int main(){
 //later (when splitting this code to daemon and cli parts) some 'printf' statements (different from current) will be present in cli;
 //files "log%interface_name%.txt will be saved at '/' (perhaps place them in separate directory: '/%dir_name%/%files%');
 //communication between cli and daemon will be implemented through file (AF_UNIX socket); may d-bus be used, but it will take more time;
+//because of lines' shifts complexity is approximately O(N*log N);
