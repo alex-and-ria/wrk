@@ -23,8 +23,10 @@
 #include <sys/un.h>
 
 #define buf_sz 65536
+#define kb_sz 1024
 #define line_len 21//n(255.255.255.255)=15; n(' ')=1; n(unsigned int)=4; n('\n')=1;
 #define m_ip_len 15
+#define flines_max 15
 #define NAME "sock_file"
 
 void sps(){
@@ -52,15 +54,16 @@ unsigned int getln(unsigned char* strff,unsigned char* g_ip, uint_f* g_ipcnt,FIL
 	return cpcnt;
 }
 
-int ffindip(struct sockaddr_in src,FILE *logfile){//it would be easier to work with data loaded to RAM (with list or so) but as
+int ffindip(struct sockaddr_in src,FILE *logfile,bool flread){//it would be easier to work with data loaded to RAM (with list or so) but as
 //collected information may become too big to handle it, there used file to save data;
-	sps();
+	//sps();
 	unsigned char str_to_file[line_len],strff[line_len],g_ip[m_ip_len+1];
 	uint_f curr_ipcnt,g_ipcnt; curr_ipcnt.u_val=1;
 	unsigned int i; int cmpres; unsigned long int n_lines=0,sln=0,eln=0,curr_dif,curr_line; long int i_signed;
 	for(i=0;i<line_len;i++)
 		str_to_file[i]=' ';
 	memcpy(str_to_file+15-strlen(inet_ntoa(src.sin_addr)),inet_ntoa(src.sin_addr),strlen(inet_ntoa(src.sin_addr)));
+	memcpy(str_to_file+15," ",1);
 	memcpy(str_to_file+16,curr_ipcnt.u_byte,sizeof(curr_ipcnt.u_val));
 	memcpy(str_to_file+20,"\n",strlen("\n"));
 	
@@ -71,24 +74,29 @@ int ffindip(struct sockaddr_in src,FILE *logfile){//it would be easier to work w
 	}
 	unsigned long int send=ftell(logfile);
 	rewind(logfile);// unsigned char ufchar;
-	printf("send-sstrt=%ld",send-sstrt); sps();
+	printf("send-sstrt=%ld",send-sstrt); //sps();
 	if((send-sstrt)==0){//file is empty;
+		if(flread) return -2;
 		rewind(logfile);//to be sure;
 		fwrite(str_to_file,sizeof(unsigned char),line_len,logfile);
 		return 0;
 	}
 	n_lines=(send-sstrt)/line_len; sln=0;eln=n_lines-1;
-	printf("n_lines=%ld",n_lines); sps();
+	printf("n_lines=%ld",n_lines); //sps();
 	
 	rewind(logfile);
 	while((eln-sln)>1){
-		sps();
+		//sps();
 		curr_dif=(unsigned int)((eln-sln)/2.+0.5); curr_line=sln+curr_dif;
 		fseek(logfile, curr_line*line_len,SEEK_SET);//find line position;
 		printf("\nsln=%ld, curr_dif=%ld curr_line=%ld pos=%ld",sln,curr_dif,curr_line,ftell(logfile));
 		unsigned int f_ip_len=getln(strff,g_ip,&g_ipcnt,logfile);
-		sps();
+		//sps();
 		if((cmpres=strcmp(g_ip,inet_ntoa(src.sin_addr)))==0){//equal
+			if(flread){
+				printf("\nreturning: g_ipcnt.u_val=%d",g_ipcnt.u_val);
+				return g_ipcnt.u_val;
+			}
 			g_ipcnt.u_val++;
 			memcpy(strff+16,g_ipcnt.u_byte,sizeof(g_ipcnt.u_val));
 			fseek(logfile, curr_line*line_len,SEEK_SET);//find line position;
@@ -110,6 +118,7 @@ int ffindip(struct sockaddr_in src,FILE *logfile){//it would be easier to work w
 	cmpres=strcmp(g_ip,inet_ntoa(src.sin_addr)); printf("\ncmpres (sln,ni)=%d", cmpres);	
 	if((cmpres=strcmp(g_ip,inet_ntoa(src.sin_addr)))==0){
 		printf("\n(sln=%ld) cmpres=%d g_ip=%s inet_ntoa(src.sin_addr))=%s",sln,cmpres,g_ip,inet_ntoa(src.sin_addr));
+		if(flread) return g_ipcnt.u_val;
 		g_ipcnt.u_val++;
 		memcpy(strff+16,g_ipcnt.u_byte,sizeof(g_ipcnt.u_val));
 		fseek(logfile, sln*line_len,SEEK_SET);//find line position;
@@ -117,14 +126,15 @@ int ffindip(struct sockaddr_in src,FILE *logfile){//it would be easier to work w
 		return 0;
 	}
 	if(cmpres>0){//insert line before sln;
+		if(flread) return -2;
 		for(i_signed=n_lines-1;i_signed>=(long int)sln;i_signed--){//shift lines;
 			printf("\nib i_signed=%ld, n_lines=%ld, sln=%ld",i_signed,n_lines,sln);
-			sps();
+			//sps();
 			fseek(logfile, i_signed*line_len,SEEK_SET);//find line position;
 			getln(strff,g_ip,&g_ipcnt,logfile);
 			fwrite(strff,sizeof(unsigned char),line_len,logfile);
 		}
-		printf("\n((b)sln=%ld) cmpres=%d g_ip=%s inet_ntoa(src.sin_addr))=%s",sln,cmpres,g_ip,inet_ntoa(src.sin_addr)); sps();
+		printf("\n((b)sln=%ld) cmpres=%d g_ip=%s inet_ntoa(src.sin_addr))=%s",sln,cmpres,g_ip,inet_ntoa(src.sin_addr)); //sps();
 		fseek(logfile, sln*line_len,SEEK_SET);
 		fwrite(str_to_file,sizeof(unsigned char),line_len,logfile);
 		return 0;
@@ -134,6 +144,7 @@ int ffindip(struct sockaddr_in src,FILE *logfile){//it would be easier to work w
 		getln(strff,g_ip,&g_ipcnt,logfile);
 		if((cmpres=strcmp(g_ip,inet_ntoa(src.sin_addr)))==0){
 			printf("\n(eln=%ld) cmpres=%d g_ip=%s inet_ntoa(src.sin_addr))=%s",eln,cmpres,g_ip,inet_ntoa(src.sin_addr));
+			if(flread) return g_ipcnt.u_val;
 			g_ipcnt.u_val++;
 			memcpy(strff+16,g_ipcnt.u_byte,sizeof(g_ipcnt.u_val));
 			fseek(logfile, eln*line_len,SEEK_SET);
@@ -142,23 +153,25 @@ int ffindip(struct sockaddr_in src,FILE *logfile){//it would be easier to work w
 		}
 		if(cmpres>0){//insert line between sln and eln;
 			printf("\ncmpres1 (eln,ni)=%d", cmpres);
+			if(flread) return -2;
 			for(i_signed=n_lines-1;i_signed>=(long int)eln;i_signed--){
 				printf("\nibw i_signed=%ld, n_lines=%ld, eln=%ld",i_signed,n_lines,eln);
-				sps();
+				//sps();
 				fseek(logfile, i_signed*line_len,SEEK_SET);//find line position;
 				getln(strff,g_ip,&g_ipcnt,logfile);
 				fwrite(strff,sizeof(unsigned char),line_len,logfile);
 			}
-			printf("\n(eln=%ld sln=%ld) cmpres=%d g_ip=%s inet_ntoa(src.sin_addr))=%s",eln,sln,cmpres,g_ip,inet_ntoa(src.sin_addr)); sps();
+			printf("\n(eln=%ld sln=%ld) cmpres=%d g_ip=%s inet_ntoa(src.sin_addr))=%s",eln,sln,cmpres,g_ip,inet_ntoa(src.sin_addr)); //sps();
 			fseek(logfile, eln*line_len,SEEK_SET);
 			fwrite(str_to_file,sizeof(unsigned char),line_len,logfile);
 			return 0;
 		}
 		else{//insert line after eln;
 			printf("\ncmpres (eln,ni)=%d", cmpres);
+			if(flread) return -2;
 			for(i_signed=n_lines-1;i_signed>(long int)eln;i_signed--){
 				printf("\niaeln i_signed=%ld, n_lines=%ld, eln=%ld",i_signed,n_lines,eln);
-				sps();
+				//sps();
 				fseek(logfile, i_signed*line_len,SEEK_SET);//find line position;
 				getln(strff,g_ip,&g_ipcnt,logfile);
 				fwrite(strff,sizeof(unsigned char),line_len,logfile);
@@ -169,11 +182,12 @@ int ffindip(struct sockaddr_in src,FILE *logfile){//it would be easier to work w
 			return 0;
 		}
 	}
+	if(flread) return -3;
 	return -1;
 }
 
-void pprocess(unsigned char* buffer, int data_sz, struct ifreq ifr,FILE *logfile){
-	struct sockaddr_in source,dest;
+void pprocess(unsigned char* buffer, int data_sz, struct ifreq ifr,FILE *logfile,bool flread){
+	struct sockaddr_in source,dest; int fip_res;
 	struct iphdr *iph = (struct iphdr *)(buffer  + sizeof(struct ethhdr));
 	source.sin_addr.s_addr = iph->saddr; dest.sin_addr.s_addr = iph->daddr;
 	//printf("\nsrc_addr=%s,",inet_ntoa(source.sin_addr)); printf(" dst_addr=%s",inet_ntoa(dest.sin_addr));
@@ -182,20 +196,53 @@ void pprocess(unsigned char* buffer, int data_sz, struct ifreq ifr,FILE *logfile
 	}
 	else{
 		printf("\nsource.sin_addr=%s, ifr.sin_addr=%s\n",inet_ntoa(source.sin_addr),inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
-		if(ffindip(source,logfile)){
-			
+		if((fip_res=ffindip(source,logfile,flread))){
+			if(!flread){
+				if(fip_res==-1){
+					printf("\nwrite_err!\n"); sps();
+				}
+			}
+			else{
+				if(fip_res==-2){
+					printf("\nip_nfnd\n");
+				}
+				else if(fip_res==-3){
+					printf("\nread_err!\n"); sps();
+				}
+			}
+			sps();
 		}
 	}
 }
+
+void prs_cli(char* cli_comm,int rval,int* argc_sock, unsigned char argv_sock[2][kb_sz]){
+	unsigned int i=0,ln_cnt=0; *argc_sock=1;
+	for(i=0;i<rval;i++){
+		if(cli_comm[i]!=' '){
+			argv_sock[(*argc_sock)-1][ln_cnt]=cli_comm[i];
+			ln_cnt++;
+		}
+		else{
+			argv_sock[(*argc_sock)-1][ln_cnt]='\0';
+			(*argc_sock=2); ln_cnt=0;
+		}
+	}
+	argv_sock[(*argc_sock)-1][ln_cnt]='\0';
+	if((*argc_sock)==1){
+		argv_sock[1][0]='\0';
+	}
+	printf("\n*argc_sock=%d argv_sock[0]=%s argv_sock[1]=%s",*argc_sock,argv_sock[0],argv_sock[1]);
+}
  
 int main(){
-	FILE *logfile; int saddr_size, data_size, cli_sock, msgsock, rval; int dcnt=50;
+	FILE *logfile; bool flread=0;int saddr_size, data_size, cli_sock, msgsock, rval; int dcnt=flines_max;
     struct sockaddr saddr; struct sockaddr_un server; 
-	char cli_comm[1024]; char* if_name="wlan0"; char fname[sizeof("log")+10+sizeof(".txt")]; 
+	char cli_comm[kb_sz],cli_snd[kb_sz]; char* if_name="wlan0"; char fname[sizeof("log")+10+sizeof(".txt")]; 
 	memcpy(fname,"log",strlen("log"));
 	memcpy(fname+strlen("log"),if_name,strlen(if_name));
 	memcpy(fname+strlen("log")+strlen(if_name),".txt\0",strlen(".txt\0")+1); printf("%s",fname);
     unsigned char *buffer = (unsigned char *) malloc(buf_sz);
+    unsigned int argc_sock; unsigned char argv_sock[2][kb_sz];
      
     logfile=fopen(fname,"rb+");
     if(logfile==NULL){
@@ -234,10 +281,11 @@ int main(){
 	listen(cli_sock, 1);
 	fcntl(cli_sock, F_SETFL, O_NONBLOCK);
     
-    while(dcnt){
+    while(1){
+    	//sps();
     	msgsock = accept(cli_sock, 0, 0);
 		fcntl(msgsock, F_SETFL, O_NONBLOCK);
-		if(msgsock==-1){
+		if(dcnt>=0&&msgsock==-1&&(!flread)){
 		    saddr_size = sizeof(saddr);
 		    //Receive a packet
 		    data_size = recvfrom(sock_raw , buffer , buf_sz , 0 , &saddr , (socklen_t*)&saddr_size);
@@ -246,21 +294,114 @@ int main(){
 		        return 1;
 		    }
 		    //Now process the packet
-		    pprocess(buffer,data_size,ifr,logfile);
+		    pprocess(buffer,data_size,ifr,logfile,flread);
 		    dcnt--;
 		}
-		else{
-			if ((rval = read(msgsock, cli_comm, 1024)) < 0)
+		else if(msgsock!=-1){
+			if ((rval = read(msgsock, cli_comm, kb_sz)) < 0)
                 perror("reading stream message");
             else if (rval == 0)
                 printf("Ending connection\n");
             else{
             	//handle request;
-            	printf("-->%s\n", cli_comm);
+            	printf("\n-->%s\n", cli_comm);
+            	prs_cli(cli_comm,rval,&argc_sock,argv_sock);
+            	if(argc_sock==1){
+            		if(strcmp(argv_sock[0],"start")==0){
+		        		printf("\nstrt fnd"); dcnt=flines_max;
+		        		fclose(logfile);
+		        		logfile=fopen(fname,"wb+");//clear existing file;
+		        		if(logfile==NULL){
+		        			printf("Unable to create log[iface].txt file.");
+		        			char* tmp_msg="start: Unable to create log[iface].txt file\0";
+		        			memcpy(cli_snd,tmp_msg,strlen(tmp_msg)+1);
+		        			//cli_snd="start: Unable to create log[iface].txt file";
+		        		}
+		        		else{
+		        			char* tmp_msg="started log\0";
+		        			memcpy(cli_snd,tmp_msg,strlen(tmp_msg)+1);
+		        			//cli_snd="started log";
+		        		}
+		        	}
+		        	else if(strcmp(argv_sock[0],"stop")==0){
+		        		printf("\nstop fnd");
+		        		fclose(logfile);
+		        		logfile=fopen(fname,"rb");//open for reading existing file;
+		        		if(logfile==NULL){
+		        			printf("Unable to read log[iface].txt file.");
+		        			char* tmp_msg="stop: Unable to read log[iface].txt file\0";
+		        			memcpy(cli_snd,tmp_msg,strlen(tmp_msg)+1);
+		        			//cli_snd="stop: Unable to read log[iface].txt file";
+		        		}
+		        		else{
+		        			flread=1;
+		        			char* tmp_msg="stopped log\0";
+		        			memcpy(cli_snd,tmp_msg,strlen(tmp_msg)+1);
+		        			//cli_snd="stopped log";
+		        		}
+		        	}
+		        	else{
+		        		cli_snd[0]='\0';
+		        		printf("\ndefault");
+		        	}
+            	}
+            	else{
+            		if(strcmp(argv_sock[0],"show")==0){
+		        		printf("\nshow %s",argv_sock[1]);
+		        		struct sockaddr_in iptf; int fip_res;
+		        		if(inet_aton(argv_sock[1],&(iptf.sin_addr))){
+		        			if((fip_res=ffindip(iptf,logfile,1))<0){
+		        				if(fip_res==-2){
+									printf("\nip_nfnd\n");
+									memcpy(cli_snd,"ip not found\0",strlen("ip not found")+1);
+									sps();
+								}
+								else if(fip_res==-3){
+									printf("\nread_err!\n");
+									memcpy(cli_snd,"read_err!\0",strlen("read_err!")+1);
+									sps();
+								}
+		        			}
+		        			else{
+		        				printf("\nfnd_cnt=%d\n",fip_res);
+		        				unsigned char str_num_res[12];//enough for 4 byte number;
+		        				sprintf(str_num_res,"%d",fip_res);
+								memcpy(cli_snd,"fip_res=",strlen("fip_res="));
+								memcpy(cli_snd+strlen("fip_res="),str_num_res,strlen(str_num_res)+1);
+		        			}
+		        		}
+		        		else{
+	        				perror("\nip_convertion");
+	        				memcpy(cli_snd,"check ip\0",strlen("check ip")+1);
+							sps();
+	        			}
+		        	}
+		        	else if(strcmp(argv_sock[0],"select")==0){
+		        		printf("\nselect %s",argv_sock[1]);
+		        	}
+		        	else if(strcmp(argv_sock[0],"stat")==0){
+		        		if(strcmp(argv_sock[1],"all")==0){
+		        			printf("\nstat: full");
+		        		}
+		        		else{
+		        			printf("\nstat %s",argv_sock[1]);
+		        		}
+		        	}
+		        	else{
+		        		cli_snd[0]='\0';
+		        		printf("\ndefault");
+		        	}
+            	}
+            	printf("\nsnd_msg=%s",cli_snd);
+            	if(write(msgsock,cli_snd,strlen(cli_snd)+1)<0){
+            		perror("writing stream message");
+            	}
             }
             close(msgsock);
-		}        
+		}
+		sps();
     }
+    free(buffer);
     close(sock_raw);
     close(cli_sock);
     unlink(NAME);
