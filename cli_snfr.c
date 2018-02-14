@@ -22,6 +22,7 @@ int main(int argc, char** argv){//it is good idea to use here getopt_long() for 
 		printf(info_str);
 		return 0;
 	}
+	chdir("/"); // Change the current working directory to root. (for socket names);
 	int sock,rval;
     struct sockaddr_un server;
     char buf[1024]; 
