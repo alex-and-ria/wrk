@@ -21,6 +21,7 @@
 #include<unistd.h>
 #include <fcntl.h>//for fcntl (nonblocking socket);
 #include <sys/un.h>
+#include <ifaddrs.h>
 
 #define buf_sz 65536
 #define kb_sz 1024
@@ -233,11 +234,32 @@ void prs_cli(char* cli_comm,int rval,int* argc_sock, unsigned char argv_sock[2][
 	}
 	printf("\n*argc_sock=%d argv_sock[0]=%s argv_sock[1]=%s",*argc_sock,argv_sock[0],argv_sock[1]);
 }
+
+int checkifnm(char* ifname){
+	struct ifaddrs *ifaddr,*ifa; int i,cmpres,family;
+	if (getifaddrs(&ifaddr) == -1) {
+       perror("getifaddrs");
+       return -1;
+   	}
+   	for (ifa = ifaddr, i = 0; ifa != NULL; ifa = ifa->ifa_next, i++){
+   		family = ifa->ifa_addr->sa_family;
+   		if (ifa->ifa_addr == NULL||family != AF_PACKET)
+			continue;
+   		cmpres=strcmp(ifname,ifa->ifa_name);
+   		printf("\ni=%d, ifa_name=%s cmpres=%d",i,ifa->ifa_name,cmpres);
+   		if(cmpres==0){
+   			printf("\nif_fnd");
+   			return 0;
+   		}
+   	}
+   	return -1;
+}
  
 int main(){
 	FILE *logfile; bool flread=0;int saddr_size, data_size, cli_sock, msgsock, rval; int dcnt=flines_max;
     struct sockaddr saddr; struct sockaddr_un server; 
-	char cli_comm[kb_sz],cli_snd[kb_sz]; char* if_name="wlan0"; char fname[sizeof("log")+10+sizeof(".txt")]; 
+	char cli_comm[kb_sz],cli_snd[kb_sz]; char if_name[10]; char fname[sizeof("log")+10+sizeof(".txt")]; 
+	memcpy(if_name,"wlan0\0",strlen("wlan0")+1);
 	memcpy(fname,"log",strlen("log"));
 	memcpy(fname+strlen("log"),if_name,strlen(if_name));
 	memcpy(fname+strlen("log")+strlen(if_name),".txt\0",strlen(".txt\0")+1); printf("%s",fname);
@@ -378,13 +400,42 @@ int main(){
 		        	}
 		        	else if(strcmp(argv_sock[0],"select")==0){
 		        		printf("\nselect %s",argv_sock[1]);
+		        		int isifname;
+		        		if((isifname=checkifnm(argv_sock[1]))<0){//no such interface;
+		        			printf("\niface not found");
+		        			memcpy(cli_snd,"iface not found\0",strlen("iface not found")+1);
+		        		}
+		        		else{
+		        			fclose(logfile);//finishing write to previous log file;
+		        			memcpy(if_name,argv_sock[1],strlen(argv_sock[1])+1);//new file's name;
+							memcpy(fname,"log",strlen("log"));
+							memcpy(fname+strlen("log"),if_name,strlen(if_name));
+							memcpy(fname+strlen("log")+strlen(if_name),".txt\0",strlen(".txt\0")+1); printf("%s",fname);
+		        			logfile=fopen(fname,"rb+");
+							if(logfile==NULL){
+								logfile=fopen(fname,"wb+");//if file not exist, create it;
+								if(logfile==NULL){
+									printf("Unable to create new log.txt file.");
+									memcpy(cli_snd,"file_err\0",strlen("file_err")+1);
+								}
+							}
+							if(logfile!=NULL){
+								memcpy(cli_snd,fname,strlen(fname));
+								memcpy(cli_snd+strlen(fname)," selected\0",strlen(" selected")+1);
+							}
+		        		}
 		        	}
-		        	else if(strcmp(argv_sock[0],"stat")==0){
+		        	else if(strcmp(argv_sock[0],"stat")==0){//shoud be rewriten (probably with changes in cli_cnfr.c code);
 		        		if(strcmp(argv_sock[1],"all")==0){
 		        			printf("\nstat: full");
+		        			unsigned char* tpm_msg="see log[iface_name].txt files\0";
+		        			memcpy(cli_snd,tpm_msg,strlen(tpm_msg)+1);
 		        		}
 		        		else{
 		        			printf("\nstat %s",argv_sock[1]);
+		        			char tpm_msg[kb_sz/2];
+		        			sprintf(tpm_msg,"try to find log%s.txt file",argv_sock[1]);
+		        			memcpy(cli_snd,tpm_msg,strlen(tpm_msg)+1);
 		        		}
 		        	}
 		        	else{
