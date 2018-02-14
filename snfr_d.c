@@ -489,8 +489,8 @@ int main(){
     return 0;
 }
 
-//currently 'printf' statements are used for debugging; later they will be deleted for daemon code;
-//later (when splitting this code to daemon and cli parts) some 'printf' statements (different from current) will be present in cli;
+//currently 'printf' statements are used for debugging; later they will be deleted for daemon code; upd: printf->fprintf;
 //files "log%interface_name%.txt will be saved at '/' (perhaps place them in separate directory: '/%dir_name%/%files%');
 //communication between cli and daemon will be implemented through file (AF_UNIX socket); may d-bus be used, but it will take more time;
 //because of lines' shifts complexity is approximately O(N*log N);
+//this code needs debagging; (snfr.c and cli1.c working, but snfr not a service);
