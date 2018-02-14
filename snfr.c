@@ -19,10 +19,13 @@
 #include<sys/time.h>
 #include<sys/types.h>
 #include<unistd.h>
+#include <fcntl.h>//for fcntl (nonblocking socket);
+#include <sys/un.h>
 
 #define buf_sz 65536
 #define line_len 21//n(255.255.255.255)=15; n(' ')=1; n(unsigned int)=4; n('\n')=1;
 #define m_ip_len 15
+#define NAME "sock_file"
 
 void sps(){
 	printf("\npak...");
@@ -186,8 +189,9 @@ void pprocess(unsigned char* buffer, int data_sz, struct ifreq ifr,FILE *logfile
 }
  
 int main(){
-	FILE *logfile; int saddr_size , data_size; struct sockaddr saddr; int dcnt=50;
-	char* if_name="wlan0"; char fname[sizeof("log")+10+sizeof(".txt")]; 
+	FILE *logfile; int saddr_size, data_size, cli_sock, msgsock, rval; int dcnt=50;
+    struct sockaddr saddr; struct sockaddr_un server; 
+	char cli_comm[1024]; char* if_name="wlan0"; char fname[sizeof("log")+10+sizeof(".txt")]; 
 	memcpy(fname,"log",strlen("log"));
 	memcpy(fname+strlen("log"),if_name,strlen(if_name));
 	memcpy(fname+strlen("log")+strlen(if_name),".txt\0",strlen(".txt\0")+1); printf("%s",fname);
@@ -214,21 +218,52 @@ int main(){
 	strncpy(ifr.ifr_name, if_name, IFNAMSIZ-1); /* I want IP address attached to if_name */
 	ioctl(fd, SIOCGIFADDR, &ifr); close(fd);
 	printf("\nip(if_name)=%s\n", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+	
+	//create socket for cli communication;
+    cli_sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (cli_sock < 0) {
+        perror("opening stream socket");
+        return 1;
+    }
+    server.sun_family = AF_UNIX;
+    strcpy(server.sun_path, NAME);
+    if (bind(cli_sock, (struct sockaddr *) &server, sizeof(struct sockaddr_un))) {
+        perror("binding stream socket");
+        return 1;
+    }
+	listen(cli_sock, 1);
+	fcntl(cli_sock, F_SETFL, O_NONBLOCK);
     
     while(dcnt){
-        saddr_size = sizeof(saddr);
-        //Receive a packet
-        data_size = recvfrom(sock_raw , buffer , buf_sz , 0 , &saddr , (socklen_t*)&saddr_size);
-        if(data_size <0 ){
-            printf("Recvfrom error , failed to get packets\n");
-            return 1;
-        }
-        //Now process the packet
-        pprocess(buffer,data_size,ifr,logfile);
-        dcnt--;
-        
+    	msgsock = accept(cli_sock, 0, 0);
+		fcntl(msgsock, F_SETFL, O_NONBLOCK);
+		if(msgsock==-1){
+		    saddr_size = sizeof(saddr);
+		    //Receive a packet
+		    data_size = recvfrom(sock_raw , buffer , buf_sz , 0 , &saddr , (socklen_t*)&saddr_size);
+		    if(data_size <0 ){
+		        printf("Recvfrom error , failed to get packets\n");
+		        return 1;
+		    }
+		    //Now process the packet
+		    pprocess(buffer,data_size,ifr,logfile);
+		    dcnt--;
+		}
+		else{
+			if ((rval = read(msgsock, cli_comm, 1024)) < 0)
+                perror("reading stream message");
+            else if (rval == 0)
+                printf("Ending connection\n");
+            else{
+            	//handle request;
+            	printf("-->%s\n", cli_comm);
+            }
+            close(msgsock);
+		}        
     }
     close(sock_raw);
+    close(cli_sock);
+    unlink(NAME);
     printf("Finished");
     return 0;
 }
