@@ -1,4 +1,4 @@
-#include<netinet/in.h>
+#include<netinet/in.h>//file to includes;
 #include<errno.h>
 #include<netdb.h>
 #include<stdio.h> //For standard things
@@ -31,7 +31,7 @@
 #define flines_max 500
 #define NAME "sock_file"
 
-FILE * outlog;
+//FILE * outlog;
 
 /*void sps(){
 	fprintf(outlog, "\npak...");
@@ -312,7 +312,7 @@ void showstt(unsigned char* cli_snd,int msgsock, unsigned char* ifacenm){
 	}
 }
  
-int main(){
+int main(){//add function for sock conf;
 	pid_t process_id = 0; pid_t sid = 0;
 	//printf("here0\n");
 	printf("here\n");
@@ -414,7 +414,7 @@ int main(){
                 fprintf(outlog, "Ending connection\n");
             else{
             	//handle request;
-            	fprintf(outlog, "\n-->%s\n", cli_comm);
+            	fprintf(outlog, "\n-->%s\n", cli_comm);//add file with functions;
             	prs_cli(cli_comm,rval,&argc_sock,argv_sock);
             	if(argc_sock==1){
             		if(strcmp(argv_sock[0],"start")==0){
