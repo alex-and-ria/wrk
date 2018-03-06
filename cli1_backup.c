@@ -65,7 +65,7 @@ int main(int argc, char** argv){//it is good idea to use here getopt_long() for 
 		return 1;
 	}
 	else if(isstrt==0){
-		printf("\nidstrt=%d\n",isstrt);
+		printf("\nidstrt=%d",isstrt);
 		int frk=fork();
 		if(frk<0){
 			perror("fork()<0");
@@ -84,7 +84,9 @@ int main(int argc, char** argv){//it is good idea to use here getopt_long() for 
 		}
 	}
 	chdir("/"); // Change the current working directory to root. (for socket names);
-	int sock,rval; struct sockaddr_un server; char buf[1024]; 
+	int sock,rval;
+    struct sockaddr_un server;
+    char buf[1024]; 
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sock < 0) {
 		perror("opening stream socket");
@@ -103,7 +105,8 @@ int main(int argc, char** argv){//it is good idea to use here getopt_long() for 
 		close(sock);
 		return 1;		
 	}
-    	
+    
+	
 	if(strcmp(argv[1],"start")==0){
 		unsigned char* data_snd="start";
 		printf("data_snd=%s\n",data_snd);
@@ -116,7 +119,7 @@ int main(int argc, char** argv){//it is good idea to use here getopt_long() for 
 		if (write(sock, data_snd, sizeof(data_snd)) < 0)
         	perror("writing on stream socket");
 	}
-	else if(strcmp(argv[1],"show")==0 && argc==4 && strcmp(argv[3],"count")==0){
+	else if(strcmp(argv[1],"show")==0&&argc==4 &&strcmp(argv[3],"count")==0){
 		unsigned char data_snd[strlen("show")+strlen(argv[2])+2];
 		memcpy(data_snd,"show",strlen("show"));
 		memcpy(data_snd+strlen("show")," ",1);
@@ -125,7 +128,7 @@ int main(int argc, char** argv){//it is good idea to use here getopt_long() for 
 		if (write(sock, data_snd, sizeof(data_snd)) < 0)
         	perror("writing on stream socket");
 	}
-	else if(strcmp(argv[1],"select")==0 && argc==4 && strcmp(argv[2],"iface")==0){
+	else if(strcmp(argv[1],"select")==0 &&argc==4&&strcmp(argv[2],"iface")==0){
 		unsigned char data_snd[strlen("select")+strlen(argv[3])+2];
 		memcpy(data_snd,"select",strlen("select"));
 		memcpy(data_snd+strlen("select")," ",1);
@@ -134,7 +137,7 @@ int main(int argc, char** argv){//it is good idea to use here getopt_long() for 
 		if (write(sock, data_snd, sizeof(data_snd)) < 0)
         	perror("writing on stream socket");
 	}
-	else if(strcmp(argv[1],"stat")==0 && (argc==2 || argc==3)){
+	else if(strcmp(argv[1],"stat")==0&&(argc==2 || argc==3)){
 		unsigned char *data_snd1;
 		if(argc==3){
 			data_snd1=(unsigned char *) malloc(strlen("stat")+strlen(argv[2])+2);
@@ -222,7 +225,7 @@ int main(int argc, char** argv){//it is good idea to use here getopt_long() for 
 	else if (rval == 0)
 	    printf("\nEnding connection\n");
 	else{
-		printf("\nrecv_msg=%s\n",buf);
+		printf("\nrecv_msg=%s",buf);
 	}
 	close(sock);
 	
